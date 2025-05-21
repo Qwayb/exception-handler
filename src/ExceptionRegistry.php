@@ -4,14 +4,19 @@ namespace Qwayb\ExceptionHandler;
 
 class ExceptionRegistry
 {
-    private static $exceptions = [];
+    private static $customMessages = [];
+    private static $debugMode = false;
 
-    public static function register(string $exceptionClass, array $config): void
+    public static function setDebugMode(bool $debug): void
     {
-        self::$exceptions[$exceptionClass] = [
-            'status' => $config['status'] ?? 500,
-            'message' => $config['message'] ?? 'Internal Server Error',
-            'code' => $config['code'] ?? 'GENERIC_ERROR'
+        self::$debugMode = $debug;
+    }
+
+    public static function register(string $exceptionClass, string $message, string $code): void
+    {
+        self::$customMessages[$exceptionClass] = [
+            'message' => $message,
+            'code'    => $code
         ];
     }
 
@@ -19,24 +24,28 @@ class ExceptionRegistry
     {
         $exceptionClass = get_class($e);
 
-        foreach (self::$exceptions as $class => $config) {
-            if ($e instanceof $class) {
-                return [
-                    'status' => $config['status'],
-                    'message' => str_replace(
-                        '{original_message}',
-                        $e->getMessage(),
-                        $config['message']
-                    ),
-                    'code' => $config['code']
-                ];
-            }
+        $status = method_exists($e, 'getStatusCode')
+            ? $e->getStatusCode()
+            : 500;
+
+        $message = self::$customMessages[$exceptionClass]['message'] ?? $e->getMessage();
+        $code    = self::$customMessages[$exceptionClass]['code'] ?? 'UNKNOWN_ERROR';
+
+        $error = [
+            'status'    => $status,
+            'code'      => $code,
+            'message'   => $message,
+            'exception' => $exceptionClass
+        ];
+
+        if (self::$debugMode) {
+            $error['debug'] = [
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTrace()
+            ];
         }
 
-        return [
-            'status' => 500,
-            'message' => $e->getMessage(),
-            'code' => 'UNHANDLED_ERROR'
-        ];
+        return $error;
     }
 }

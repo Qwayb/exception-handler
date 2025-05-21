@@ -7,16 +7,9 @@ class ExceptionHandler
     public static function handle(callable $callback): array
     {
         try {
-            return [
-                'success' => true,
-                'data' => $callback()
-            ];
+            return ['data' => $callback()];
         } catch (\Throwable $e) {
-            $error = ExceptionRegistry::resolve($e);
-            return [
-                'success' => false,
-                'error' => $error
-            ];
+            return ['error' => ExceptionRegistry::resolve($e)];
         }
     }
 }
