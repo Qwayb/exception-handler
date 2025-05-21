@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "ExceptionHandler\\": "src/"
+            "Qwayb\\ExceptionHandler\\": "src/"
         }
     }
 }
