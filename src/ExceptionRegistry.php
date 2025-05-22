@@ -1,35 +1,59 @@
 <?php
+
+namespace Qwayb\ExceptionHandler;
+
 class ExceptionRegistry
 {
-    private static $map = [
-        \InvalidArgumentException::class => 400,
-        \PDOException::class => 503,
-        \RuntimeException::class => 500,
-        \Exception::class => 500
-    ];
+    private static $exceptions = [];
+    private static $defaultStatus = 500;
 
-    private static $custom = [];
-
-    public static function register(string $exceptionClass, string $message, string $code): void
+    /**
+     * Регистрация нового типа исключения
+     */
+    public static function register(string $exceptionClass, array $config): void
     {
-        self::$custom[$exceptionClass] = compact('message', 'code');
-    }
-
-    public static function resolve(\Throwable $e): array
-    {
-        $class = get_class($e);
-        $status = self::$map[$class] ?? 500;
-
-        return [
-            'status' => $status,
-            'message' => str_replace(
-                '{original_message}',
-                $e->getMessage(),
-                self::$custom[$class]['message'] ?? $e->getMessage()
-            ),
-            'code' => self::$custom[$class]['code'] ?? 'UNKNOWN'
+        self::$exceptions[$exceptionClass] = [
+            'status' => $config['status'] ?? self::$defaultStatus,
+            'message' => $config['message'] ?? '{original_message}',
+            'code' => $config['code'] ?? 'UNKNOWN_ERROR'
         ];
     }
+
+    /**
+     * Разрешение исключения в массив с данными
+     */
+    public static function resolve(\Throwable $e): array
+    {
+        $exceptionClass = get_class($e);
+
+        foreach (self::$exceptions as $class => $config) {
+            if ($e instanceof $class) {
+                return [
+                    'status' => $config['status'],
+                    'message' => str_replace(
+                        '{original_message}',
+                        $e->getMessage(),
+                        $config['message']
+                    ),
+                    'code' => $config['code'],
+                    'exception' => $exceptionClass
+                ];
+            }
+        }
+
+        return [
+            'status' => self::$defaultStatus,
+            'message' => $e->getMessage(),
+            'code' => 'UNHANDLED_ERROR',
+            'exception' => $exceptionClass
+        ];
+    }
+
+    /**
+     * Установка статуса по умолчанию
+     */
+    public static function setDefaultStatus(int $status): void
+    {
+        self::$defaultStatus = $status;
+    }
 }
-
-

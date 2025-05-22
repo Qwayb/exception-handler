@@ -2,16 +2,29 @@
 
 namespace Qwayb\ExceptionHandler;
 
-use ExceptionRegistry;
-
 class ExceptionHandler
 {
-    public static function handle(callable $callback): array
+    /**
+     * Обработка блока кода с перехватом исключений
+     */
+    public static function handle(callable $callback, ?callable $customFormatter = null): array
     {
         try {
-            return ['success' => true, 'data' => $callback()];
+            return [
+                'success' => true,
+                'data' => $callback()
+            ];
         } catch (\Throwable $e) {
-            return ['success' => false, 'error' => ExceptionRegistry::resolve($e)];
+            $error = ExceptionRegistry::resolve($e);
+
+            if ($customFormatter) {
+                return $customFormatter($error, $e);
+            }
+
+            return [
+                'success' => false,
+                'error' => $error
+            ];
         }
     }
 }
